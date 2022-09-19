@@ -1,0 +1,92 @@
+# This workflow will build a docker container, publish it to Google Container Registry, and deploy it to GKE when there is a push to the "main" branch.
+#
+# To configure this workflow:
+#
+# 1. Ensure that your repository contains the necessary configuration for your Google Kubernetes Engine cluster, including deployment.yml, kustomization.yml, service.yml, etc.
+#
+# 2. Create and configure a Workload Identity Provider for GitHub (https://github.com/google-github-actions/auth#setting-up-workload-identity-federation)
+#
+# 3. Change the values for the GAR_LOCATION, GKE_ZONE, GKE_CLUSTER, IMAGE, REPOSITORY and DEPLOYMENT_NAME environment variables (below).
+#
+# For more support on how to run the workflow, please visit https://github.com/google-github-actions/setup-gcloud/tree/master/example-workflows/gke-kustomize
+
+name: Build and Deploy to GKE
+
+on:
+  pull_request:
+    branches: ["integ_branch"]
+
+env:
+  PROJECT_ID: ${{ secrets.GKE_PROJECT }}
+  GAR_LOCATION: us-central1 # TODO: update region of the Artifact Registry
+  GKE_CLUSTER: cluster-1    # TODO: update to cluster name
+  GKE_ZONE: us-central1-c   # TODO: update to cluster zone
+  DEPLOYMENT_NAME: gke-test # TODO: update to deployment name
+  REPOSITORY: samples # TODO: update to Artifact Registry docker repository
+  IMAGE: static-site
+
+jobs:
+  sast:
+    name: Sast
+    runs-on: ubuntu-latest
+    environment: staging
+    container:
+      # A Docker image with Semgrep installed. Do not change this.
+      image: returntocorp/semgrep    
+    if: (github.actor != 'dependabot[bot]')
+    
+    permissions:
+      contents: 'write'
+      id-token: 'write'
+      deployments: 'write'
+      packages: 'write'
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: SAST
+      run: semgrep ci
+      env:
+       SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+       
+  Build_Test_Jar_Versioning:
+    name: Build, Test and Jar Versioning
+    runs-on: ubuntu-latest
+    environment: staging
+    needs: sast 
+    
+    permissions:
+      contents: 'write'
+      id-token: 'write'
+      deployments: 'write'
+      packages: 'write'
+   
+    steps:
+    - name: Setup Java JDK
+      uses: actions/setup-java@v3.5.0
+      with:
+        # The Java version to set up. Takes a whole or semver Java version. See examples of supported syntax in README file
+        java-version: '11'
+        # Java distribution. See the list of supported distributions in README file
+        distribution: 'zulu'
+    - name: Set up Maven
+      uses: stCarolas/setup-maven@v4.4
+      with:
+        maven-version: 3.8.2    
+    - name: Build and Test
+      run: mvn clean package
+      
+    - name: Increment version
+      id: increment-version
+      uses: RichardInnocent/semantic-versioning-maven@v0.0.34
+      with:
+       access-token: ${{ secrets.github_token }}
+
+      # Everything below here shows how you might use the results of the action...
+
+    - name: Print if version changed
+      if: steps.increment-version.outputs.previous-version != steps.increment-version.outputs.new-version
+      run: echo "The new version is now $new_version"
+      env:
+       new_version: ${{ steps.increment-version.outputs.new-version }}    
+     

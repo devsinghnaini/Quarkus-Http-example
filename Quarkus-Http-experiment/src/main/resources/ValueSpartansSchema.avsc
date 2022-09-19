@@ -1,0 +1,15 @@
+{
+    "name" : "SpartansValue",
+    "namespace": "com.spartans.schema",
+    "type": "record",
+    "doc": "This record contins metadata about the payload",
+    "fields": [
+        {
+            "name" : "medData",
+            "doc" : "This field indicates the payload in its byte form",
+            "type": ["null","bytes"],
+            "default": null
+        }
+    ]
+    
+}

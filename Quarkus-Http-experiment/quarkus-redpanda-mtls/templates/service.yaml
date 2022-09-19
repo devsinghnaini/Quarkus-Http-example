@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "quarkus-redpanda-mtls.fullname" . }}
+  labels:
+    {{- include "quarkus-redpanda-mtls.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "quarkus-redpanda-mtls.selectorLabels" . | nindent 4 }}

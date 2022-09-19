@@ -1,0 +1,20 @@
+#tile for code
+#starting with local static code analysis
+local_resource('Static Code Analysis',cmd='semgrep scan --config=auto --include=src/ --output scan_results.json --json')
+local_resource('Viewing Static Code Analysis Results',cmd='cat scan_results.json')
+
+local_resource('removing secret for docker',cmd='kubectl delete secret --ignore-not-found=true docker-registry regcred -n redpanda-system')
+allow_k8s_contexts('gke_sonic-base-360918_asia-southeast1-a_cluster-1')
+
+
+local_resource('jar-build',cmd='mvn clean package',deps=['pom.xml'])
+
+custom_repo="ghcr.io/jayghiya/quarkus-redpanda-tls"
+local_resource('creating secret for docker',cmd='kubectl create secret docker-registry regcred --docker-server=ghcr.io --docker-username=ghiya6548@gmail.com --docker-password=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 --docker-email=ghiya6548@gmail.com -n redpanda-system')
+docker_build(custom_repo,'.')
+yaml= helm(
+    'quarkus-redpanda-mtls',
+    name='quarkus-mtls-redpanda',
+    namespace='redpanda-system'
+)
+k8s_yaml(yaml)

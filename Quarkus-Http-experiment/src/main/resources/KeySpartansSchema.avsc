@@ -1,0 +1,15 @@
+{
+    "name" : "SpartansKey",
+    "namespace": "com.spartans.schema",
+    "type": "record",
+    "doc": "This record contins metadata about the payload",
+    "fields": [
+        {
+            "name" : "patientMrnIdentifier",
+            "doc" : "This field indicates mrn of a paitent if available",
+            "type": ["null","string"],
+            "default": null
+        }
+    ]
+    
+}
